@@ -3,15 +3,18 @@
    Utilidades compartidas por index.html, paciente.html y medico.html
    ═══════════════════════════════════════════ */
 
-/* ── Fetch helper ──
-   Esta versión NO llama a un servidor real: usa mockApi() (ver mock-api.js),
-   que simula las respuestas sin base de datos, para que el sitio funcione
-   como estático en GitHub Pages. Los datos arrancan vacíos. */
+const API = 'api/';
+
+/* ── Fetch helper ── */
 async function apiFetch(endpoint, options = {}) {
     try {
-        return await mockApi(endpoint, options);
+        const res = await fetch(API + endpoint, {
+            headers: { 'Content-Type': 'application/json' },
+            ...options
+        });
+        return res;
     } catch (e) {
-        console.error('Error simulado:', e);
+        console.error('Error de red:', e);
         return null;
     }
 }

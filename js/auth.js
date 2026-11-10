@@ -1,11 +1,9 @@
 /* ═══════════════════════════════════════════
    auth.js
    Lógica de la pantalla única de Login / Registro (index.html)
-   Por defecto: login/registro de PACIENTE.
-   El botón de la esquina cambia a modo MÉDICO (solo login, sin registro).
    ═══════════════════════════════════════════ */
 
-let currentRole    = 'paciente'; // 'paciente' | 'doctor'
+let currentRole    = 'doctor';
 let isRegisterMode = false;
 
 /* Si ya hay sesión activa, saltar directo al panel correspondiente */
@@ -16,52 +14,20 @@ function checkLogin() {
     }
 }
 
-/* Alterna entre modo Paciente (login+registro) y modo Médico (solo login) */
-function toggleModoMedico() {
-    currentRole = (currentRole === 'paciente') ? 'doctor' : 'paciente';
-
-    const btnIcon    = document.getElementById('medico-btn-icon');
-    const btnText    = document.getElementById('medico-btn-text');
-    const subtitle   = document.getElementById('auth-subtitle');
-    const toggleWrap = document.getElementById('toggle-register-wrap');
-
-    if (currentRole === 'doctor') {
-        // Entrar a modo médico: forzamos que sea solo login, sin registro
-        isRegisterMode = false;
-        btnIcon.className = 'fas fa-user';
-        btnText.textContent = 'Soy paciente';
-        subtitle.textContent = 'Acceso para médicos';
-        toggleWrap.style.display = 'none'; // los médicos no se auto-registran
-    } else {
-        btnIcon.className = 'fas fa-user-doctor';
-        btnText.textContent = 'Acceso médicos';
-        subtitle.textContent = 'Portal Digital del Hospital Favaloro';
-        toggleWrap.style.display = 'block';
-    }
-
-    aplicarModoFormulario();
+function setRole(role, btn) {
+    currentRole = role;
+    document.querySelectorAll('.role-tab').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    actualizarCamposExtra();
 }
 
 function toggleRegisterMode() {
-    if (currentRole === 'doctor') return; // por las dudas, los médicos no registran
     isRegisterMode = !isRegisterMode;
-    aplicarModoFormulario();
-}
-
-/* Actualiza textos y qué campos se muestran según currentRole + isRegisterMode */
-function aplicarModoFormulario() {
     const regFields  = document.getElementById('reg-fields');
     const btn        = document.getElementById('auth-submit-btn');
     const title      = document.getElementById('auth-title');
     const toggleText = document.getElementById('auth-toggle-text');
     const toggleLink = document.getElementById('auth-toggle-link');
-
-    if (currentRole === 'doctor') {
-        regFields.style.display = 'none';
-        title.textContent = 'Ingreso Médicos';
-        btn.innerHTML = '<i class="fas fa-right-to-bracket"></i> Ingresar como médico';
-        return;
-    }
 
     if (isRegisterMode) {
         regFields.style.display = 'block';
@@ -76,6 +42,16 @@ function aplicarModoFormulario() {
         toggleText.textContent = '¿No tenés una cuenta?';
         toggleLink.textContent = 'Regístrate aquí';
     }
+    actualizarCamposExtra();
+}
+
+/* Muestra/oculta los bloques de campos según el rol y el modo (login/registro) */
+function actualizarCamposExtra() {
+    const credWrap   = document.getElementById('cred-wrap');
+    const pacWrap    = document.getElementById('reg-paciente-extra');
+    const mostrar    = isRegisterMode;
+    credWrap.style.display = (mostrar && currentRole === 'doctor')   ? 'block' : 'none';
+    pacWrap.style.display  = (mostrar && currentRole === 'paciente') ? 'block' : 'none';
 }
 
 function showAuthError(msg) {
@@ -85,9 +61,7 @@ function showAuthError(msg) {
     setTimeout(() => el.style.display = 'none', 4000);
 }
 
-function handleAuth() {
-    (currentRole === 'paciente' && isRegisterMode) ? registerUser() : handleLogin();
-}
+function handleAuth() { isRegisterMode ? registerUser() : handleLogin(); }
 
 async function handleLogin() {
     const email = document.getElementById('email').value.trim();
@@ -108,9 +82,7 @@ async function handleLogin() {
         setUser(data);
         location.href = rol === 'medico' ? 'medico.html' : 'paciente.html';
     } else {
-        showAuthError(data.error || (rol === 'medico'
-            ? 'Email o contraseña incorrectos.'
-            : 'Email o contraseña incorrectos. Si sos médico, usá el botón "Acceso médicos".'));
+        showAuthError(data.error || 'Email o contraseña incorrectos. Verificá tu rol también.');
     }
 }
 
@@ -129,14 +101,19 @@ async function registerUser() {
         return;
     }
 
-    const payload = {
-        rol: 'paciente',
-        nombre, apellido, dni, fecha_nacimiento: fecha_nac, sexo, telefono, email, password: pass,
-        domicilio:       document.getElementById('auth-domicilio').value.trim(),
-        obra_social:     document.getElementById('auth-obra-social').value.trim(),
-        grupo_sanguineo: document.getElementById('auth-grupo-sanguineo').value,
-        alergias:        document.getElementById('auth-alergias').value.trim()
-    };
+    const payload = { nombre, apellido, dni, fecha_nacimiento: fecha_nac, sexo, telefono, email, password: pass };
+
+    if (currentRole === 'doctor') {
+        payload.rol        = 'medico';
+        payload.credencial = document.getElementById('auth-credencial').value.trim();
+        if (!payload.credencial) { showAuthError('Ingresá tu matrícula.'); return; }
+    } else {
+        payload.rol             = 'paciente';
+        payload.domicilio       = document.getElementById('auth-domicilio').value.trim();
+        payload.obra_social     = document.getElementById('auth-obra-social').value.trim();
+        payload.grupo_sanguineo = document.getElementById('auth-grupo-sanguineo').value;
+        payload.alergias        = document.getElementById('auth-alergias').value.trim();
+    }
 
     const res = await apiFetch('registro.php', {
         method: 'POST',

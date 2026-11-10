@@ -119,7 +119,7 @@ function renderAlertas() {
 async function cargarCitasDoctor() {
     const cont = document.getElementById('listaCitasDoctor');
     cont.innerHTML = '<p style="color:var(--muted);">Cargando...</p>';
-    const res = await apiFetch(`turnos.php?medico_id=${medicoActual.id}`);
+    const res = await apiFetch('turnos.php');
     if (!res || !res.ok) { cont.innerHTML = '<p style="color:var(--muted);">No se pudo cargar.</p>'; return; }
     const data = await res.json();
     if (data.length === 0) { cont.innerHTML = '<p style="color:var(--muted); font-size:0.9rem;">No hay citas agendadas.</p>'; return; }
